@@ -1,0 +1,20 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+/.idea
+/yolov5
+/dataset
+/__pycache__
+/utils
+/datasets
+/model/dataset
+/model/OCRDataset
+/model/tests
+/model/utils
+/*.rar
+/*/__pycache__

@@ -1,0 +1,16 @@
+{
+    "plateSize": 640,
+    "OCRSize": 320,
+    "plateConfThresh": 0.75,
+    "plateIOUConfThresh": 0.75,
+    "maxPlates": 20,
+    "OCRConfThresh": 0.43,
+    "OCRIOUConfThresh": 0.78,
+    "maxOCR": 20,
+    "plateThiccness": 2,
+    "plateConf": true,
+    "plateLabel": false,
+    "OCRThiccness": 1,
+    "OCRConf": false,
+    "OCRLabel": true
+}
