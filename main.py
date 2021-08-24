@@ -24,9 +24,6 @@ UI.sem.acquire()
 db.UI = UI
 
 model = Model()
-# model.plateSize = 1440
-model.plateSize = 640
-model.OCRConfThresh = 0.55
 UI.LoadConfig(model.config)
 # model.plateModel = model.LoadModel(71)
 
@@ -35,12 +32,9 @@ lastTime = 0
 currentPlate = ""
 currentConf = 0
 
-# model.Test('test.jpg')
-# input()
-# quit()
-
 inputFile = Input()
-inputFile.LoadFile('Clip.mp4')
+# inputFile.LoadFile('Clip.mp4')
+inputFile.LoadFile('test.jpg')
 while True:
 	frame = inputFile.GetFrame()
 	if frame is None:

@@ -18,3 +18,5 @@
 /model/utils
 /*.rar
 /*/__pycache__
+/*.mp4
+/val

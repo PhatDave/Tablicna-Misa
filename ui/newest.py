@@ -29,6 +29,7 @@ class Ui_MainWindow(object):
         MainWindow.setContextMenuPolicy(Qt.DefaultContextMenu)
         MainWindow.setAcceptDrops(False)
         MainWindow.setAutoFillBackground(False)
+        # MainWindow.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
         MainWindow.setStyleSheet(u"QWidget#centralwidget{\n"
 "\n"
 "background-color: qlineargradient(spread:pad, x1:0.263, y1:0.372432, x2:0.883064, y2:0.746, stop:0 rgba(188, 216, 206, 255), stop:1 rgba(83, 141, 153, 255));\n"
@@ -317,7 +318,8 @@ class Ui_MainWindow(object):
         icon3.addFile(u"./ui/IKONE/security-camera.png", QSize(), QIcon.Normal, QIcon.Off)
         self.gumb_emitiranje_uzivo.setIcon(icon3)
         self.gumb_emitiranje_uzivo.setIconSize(QSize(41, 37))
-        self.postavkeWidget = QWidget(self.centralwidget)
+        self.postavkeWidget = QDockWidget(self.centralwidget)
+        self.postavkeWidget.setMouseTracking(True)
         self.postavkeWidget.setObjectName(u"postavkeWidget")
         self.postavkeWidget.setGeometry(QRect(70, 140, 911, 471))
         self.postavkeWidget.setAutoFillBackground(False)

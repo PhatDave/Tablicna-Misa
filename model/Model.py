@@ -193,13 +193,38 @@ class Model:
 				img = self.DrawBox(img, i, thiccness=thiccness, label=label, showConf=showConf, showLabel=showLabel)
 		return img
 
-	def SortOCR(self, OCRResults):
+	def SortOCR(self, OCRResults, filter=False):
 		results = []
 		for i in OCRResults:
 			results.append((i[0][0], i))
 		results.sort(key=lambda x: x[0])
 		results = [i[1] for i in results]
-		return results
+		if filter:
+			resultsSorted = [[]]
+			pointer = 0
+			for i in range(1, len(results)):
+				if abs(results[i - 1][0][0] - results[i][0][0]) < 5:
+					better = results[i - 1]
+					if results[i][1] > results[i - 1][1]:
+						better = results[i]
+					resultsSorted[pointer].append(better)
+				else:
+					resultsSorted.append([results[i]])
+					pointer += 1
+			results = []
+			for i in resultsSorted:
+				try:
+					best = i[0]
+					for j in i:
+						if j[1] > best[1]:
+							best = j
+					results.append(best)
+				except IndexError:
+					continue
+			# print(resultsSorted, results)
+			return results
+		else:
+			return results
 
 	def TranslateOCR(self, OCRResults):
 		OCRResults = self.SortOCR(OCRResults)
@@ -230,4 +255,5 @@ class Model:
 	def Test(self, file):
 		img = cv2.imread(file)
 		img, plates, ocr, time = self.ProcessImage(img)
+		print(ocr, time)
 		dt.imshow(img)

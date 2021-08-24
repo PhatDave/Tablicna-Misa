@@ -206,10 +206,10 @@ class UI:
 		self.window.ui.checkBox_z_confidence.setChecked(self.modelConfig.OCRConf)
 		self.window.ui.checkBox_z_label.setChecked(self.modelConfig.OCRLabel)
 
-
 	def PostavkeGumb(self):
 		if self.window.ui.postavkeWidget.isHidden():
 			self.window.ui.postavkeWidget.show()
+			self.window.ui.postavkeWidget.setFloating(True)
 		else:
 			self.window.ui.postavkeWidget.hide()
 
