@@ -1,16 +1,17 @@
 {
-    "plateSize": 1920,
+    "plateSize": 640,
     "OCRSize": 320,
     "plateConfThresh": 0.75,
-    "plateIOUConfThresh": 0.5,
+    "plateIOUConfThresh": 0.6,
     "maxPlates": 20,
     "OCRConfThresh": 0.5,
-    "OCRIOUConfThresh": 0.35,
+    "OCRIOUConfThresh": 0.5,
     "maxOCR": 20,
     "plateThiccness": 2,
     "plateConf": true,
     "plateLabel": false,
     "OCRThiccness": 1,
     "OCRConf": false,
-    "OCRLabel": true
+    "OCRLabel": true,
+    "useSmall": false
 }

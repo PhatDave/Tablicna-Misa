@@ -353,6 +353,12 @@ class Ui_MainWindow(object):
         self.checkBox_t_label.setLayoutDirection(Qt.RightToLeft)
         self.checkBox_t_label.setStyleSheet(u"font: 20pt \"Calibri\";\n"
 "")
+        self.checkBoxSmallModel = QCheckBox(self.postavkeWidget)
+        self.checkBoxSmallModel.setObjectName(u"checkBoxSmallModel")
+        self.checkBoxSmallModel.setGeometry(QRect(340, 390, 180, 20))
+        self.checkBoxSmallModel.setLayoutDirection(Qt.RightToLeft)
+        self.checkBoxSmallModel.setStyleSheet(u"font: 20pt \"Calibri\";\n"
+"")
         self.checkBox_t_confidence = QCheckBox(self.postavkeWidget)
         self.checkBox_t_confidence.setObjectName(u"checkBox_t_confidence")
         self.checkBox_t_confidence.setGeometry(QRect(40, 360, 141, 21))
@@ -607,6 +613,7 @@ class Ui_MainWindow(object):
         self.label_ukras6.setText(QCoreApplication.translate("MainWindow", u"____________________________________", None))
         self.gumb_emitiranje_uzivo.setText(QCoreApplication.translate("MainWindow", u"Emitiranje u\u017eivo", None))
         self.checkBox_t_label.setText(QCoreApplication.translate("MainWindow", u"Label", None))
+        self.checkBoxSmallModel.setText(QCoreApplication.translate("MainWindow", u"Small Model"))
         self.checkBox_t_confidence.setText(QCoreApplication.translate("MainWindow", u"Confidence", None))
         self.label_t_thickness.setText(QCoreApplication.translate("MainWindow", u"Line Thickness", None))
         self.label_t_resolution.setText(QCoreApplication.translate("MainWindow", u"Resolution", None))

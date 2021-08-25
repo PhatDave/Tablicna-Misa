@@ -39,12 +39,14 @@ class UI:
 		self.fpsItemLimit = 15
 		self.lastUpdate = dft()
 
+		self.modelConfig = None
+		self.model = None
+
 	def Start(self):
 		self.app = QApplication(sys.argv)
 		self.window = MainWindow()
 		self.window.show()
 		self.sem.release()
-		self.modelConfig = None
 
 		self.window.ui.postavkeWidget.hide()
 		self.window.ui.gumb_baza.clicked.connect(self.DodajUBazuGumb)
@@ -70,16 +72,21 @@ class UI:
 		self.window.ui.label_31.textChanged.connect(self.LabelIOUConfidence2)
 
 		self.window.ui.lineEdit.textChanged.connect(self.PlateThickness)
-		self.window.ui.lineEdit_2.textEdited.connect(self.PlateResolution)
+		self.window.ui.lineEdit_2.textChanged.connect(self.PlateResolution)
 		self.window.ui.lineEdit_7.textChanged.connect(self.OCRThickness)
-		self.window.ui.lineEdit_8.textEdited.connect(self.OCRResolution)
+		self.window.ui.lineEdit_8.textChanged.connect(self.OCRResolution)
 
 		self.window.ui.checkBox_t_confidence.stateChanged.connect(self.PlateConfidenceDisplay)
 		self.window.ui.checkBox_t_label.stateChanged.connect(self.PlateLabelDisplay)
 		self.window.ui.checkBox_z_confidence.stateChanged.connect(self.OCRConfidenceDisplay)
 		self.window.ui.checkBox_z_label.stateChanged.connect(self.OCRLabelDisplay)
 
+		self.window.ui.checkBoxSmallModel.stateChanged.connect(self.SetSmallModel)
+
 		sys.exit(self.app.exec())
+
+	def SetSmallModel(self):
+		self.model.SwitchModel(self.window.ui.checkBoxSmallModel.isChecked())
 
 	def PlateConfidenceDisplay(self):
 		self.modelConfig.plateConf = self.window.ui.checkBox_t_confidence.isChecked()

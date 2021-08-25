@@ -32,6 +32,8 @@ class ModelConfig:
 		self.OCRConf = False
 		self.OCRLabel = True
 
+		self.useSmall = False
+
 		# self.SaveJson()
 		self.LoadJson()
 
@@ -55,6 +57,8 @@ class ModelConfig:
 			'OCRThiccness'      : self.OCRThiccness,
 			'OCRConf'           : self.OCRConf,
 			'OCRLabel'          : self.OCRLabel,
+
+			'useSmall'          : self.useSmall,
 		}
 		return dict
 
@@ -78,6 +82,8 @@ class ModelConfig:
 		self.OCRConf = data['OCRConf']
 		self.OCRLabel = data['OCRLabel']
 
+		self.useSmall = data['useSmall']
+
 	def SaveJson(self):
 		data = self.ToDict()
 		with open('config.json', 'w') as f:
@@ -92,6 +98,8 @@ class ModelConfig:
 class Model:
 	def __init__(self, yoloPath='yolov5'):
 		self.plateModel = None
+		self.smallModel = None
+		self.models = []
 		self.OCRModel = None
 		self.yoloPath = yoloPath
 		sys.path.insert(0, yoloPath)
@@ -101,8 +109,16 @@ class Model:
 		# self.plateModel = self.LoadModel(34)
 		# self.OCRModel = self.LoadModel(53)
 		self.plateModel = self.LoadModelPath('plate.pt')
+		self.smallModel = self.LoadModelPath('yolov3.pt')
+		self.models = [self.plateModel, self.smallModel]
 		self.OCRModel = self.LoadModelPath('OCR.pt')
 		self.config = ModelConfig()
+
+	def SwitchModel(self, bool):
+		if bool:
+			self.plateModel = self.models[1]
+		else:
+			self.plateModel = self.models[0]
 
 	def LoadModelPath(self, path):
 		model = torch.load(path)['model']

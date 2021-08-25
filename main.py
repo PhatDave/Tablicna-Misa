@@ -25,7 +25,10 @@ db.UI = UI
 
 model = Model()
 UI.LoadConfig(model.config)
-# model.plateModel = model.LoadModel(71)
+UI.model = model
+# 72 - yolo3tiny model
+# 80 - tiny model - 100 epoch, pretty good
+# model.plateModel = model.LoadModel(80)
 
 minTimeGap = 2
 lastTime = 0
@@ -34,7 +37,8 @@ currentConf = 0
 
 inputFile = Input()
 # inputFile.LoadFile('Clip.mp4')
-inputFile.LoadFile('test.jpg')
+# inputFile.LoadFile('test.jpg')
+inputFile.LoadDirectory('test')
 while True:
 	frame = inputFile.GetFrame()
 	if frame is None:
