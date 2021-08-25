@@ -1,20 +1,24 @@
+import os
 import threading
 from timeit import default_timer as dft
 import daveTrash as dt
 import cv2
 
-import ui.mainUi as ui
+# import ui.mainUi as ui
 from Person import Person
 from Registration import Registration
 from database.mainDatabase import Database
 from input.inputMain import Input
 from model.Model import Model
+from utils.augmentations import letterbox
+from utils.general import non_max_suppression, scale_coords
 
 db = Database()
 dbThread = threading.Thread(target=db.Start)
 dbThread.setDaemon(True)
 dbThread.start()
 
+"""
 UI = ui.UI()
 UI.database = db
 UIThread = threading.Thread(target=UI.Start)
@@ -22,13 +26,10 @@ UIThread.setDaemon(True)
 UIThread.start()
 UI.sem.acquire()
 db.UI = UI
+"""
 
 model = Model()
-UI.LoadConfig(model.config)
-UI.model = model
-# 72 - yolo3tiny model
-# 80 - tiny model - 100 epoch, pretty good
-# model.plateModel = model.LoadModel(80)
+# UI.LoadConfig(model.config)
 
 minTimeGap = 2
 lastTime = 0
@@ -39,6 +40,29 @@ inputFile = Input()
 # inputFile.LoadFile('Clip.mp4')
 # inputFile.LoadFile('test.jpg')
 inputFile.LoadDirectory('test')
+
+# Guranteed shape
+# img = letterbox(inputFile.GetFrame(), 1920, auto=False)[0]
+# TODO:
+# Batch images and pre process to gurantee same shape
+# Figure out what the fuck the model outputs
+# ???
+# Profit
+
+testImage = cv2.imread('goodOne.jpg')
+frames = []
+for i in os.listdir('test'):
+	if '.png' in i or '.jpg' in i:
+		frames.append(cv2.imread(f'test\\{i}'))
+
+framesP, plates, ocr, time = model.ProcessBatch(frames)
+framesP, plates, ocr, time = model.ProcessBatch(frames)
+print(ocr, time)
+for i, img in enumerate(framesP):
+	cv2.imwrite(f'cunf{i}.jpg', img)
+
+quit()
+
 while True:
 	frame = inputFile.GetFrame()
 	if frame is None:

@@ -86,7 +86,7 @@ class UI:
 		sys.exit(self.app.exec())
 
 	def SetSmallModel(self):
-		self.model.SwitchModel(self.window.ui.checkBoxSmallModel.isChecked())
+		self.modelConfig.plateModel = int(self.window.ui.checkBoxSmallModel.isChecked())
 
 	def PlateConfidenceDisplay(self):
 		self.modelConfig.plateConf = self.window.ui.checkBox_t_confidence.isChecked()

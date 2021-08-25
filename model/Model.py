@@ -32,7 +32,7 @@ class ModelConfig:
 		self.OCRConf = False
 		self.OCRLabel = True
 
-		self.useSmall = False
+		self.plateModel = 0
 
 		# self.SaveJson()
 		self.LoadJson()
@@ -58,7 +58,7 @@ class ModelConfig:
 			'OCRConf'           : self.OCRConf,
 			'OCRLabel'          : self.OCRLabel,
 
-			'useSmall'          : self.useSmall,
+			'plateModel'        : self.plateModel,
 		}
 		return dict
 
@@ -82,7 +82,7 @@ class ModelConfig:
 		self.OCRConf = data['OCRConf']
 		self.OCRLabel = data['OCRLabel']
 
-		self.useSmall = data['useSmall']
+		self.useSmall = data['plateModel']
 
 	def SaveJson(self):
 		data = self.ToDict()
@@ -92,7 +92,6 @@ class ModelConfig:
 	def LoadJson(self, file='config.json'):
 		with open(file, 'r') as f:
 			self.FromDict(json.load(f))
-
 
 
 class Model:
@@ -114,11 +113,7 @@ class Model:
 		self.OCRModel = self.LoadModelPath('OCR.pt')
 		self.config = ModelConfig()
 
-	def SwitchModel(self, bool):
-		if bool:
-			self.plateModel = self.models[1]
-		else:
-			self.plateModel = self.models[0]
+		open('log.txt', 'w')
 
 	def LoadModelPath(self, path):
 		model = torch.load(path)['model']
@@ -148,6 +143,31 @@ class Model:
 		img = img.half()
 		return img, originalShape
 
+	def BatchFrames(self, frames, imageSize=640):
+		originalShapes = []
+		for i in frames:
+			originalShapes.append(i.shape)
+
+		batchTensor = None
+		batch = None
+		imgSize = int(imageSize / 32) * 32
+		for i, frame in enumerate(frames):
+			img = letterbox(frame, imgSize, auto=False)[0]
+			img = img.transpose((2, 0, 1))[::-1]
+			img = np.ascontiguousarray(img)
+			img = img[None]
+			img = torch.from_numpy(img)
+
+			if batchTensor is None:
+				batchTensor = img
+			else:
+				batchTensor = torch.cat((batchTensor, img), axis=0)
+
+		batchTensor = batchTensor.cuda()
+		batchTensor = batchTensor / 255.0
+		batchTensor = batchTensor.half()
+		return batchTensor, originalShapes
+
 	def RunInference(self, img, model, imgSize=640, confThresh=0.85, iouThresh=0.85, maxDet=20):
 		img, imgShape = self.ImagePreprocess(img, imgSize=imgSize)
 		output = []
@@ -160,13 +180,43 @@ class Model:
 				output.append((xyxy, round(conf.item(), 3), cls))
 		return output
 
-	def GetPlates(self, img):
-		return self.RunInference(img, self.plateModel, self.config.plateSize, self.config.plateConfThresh, self.config.plateIOUConfThresh,
-		                         self.config.maxPlates)
+	def RunBatchInference(self, frames, model, imgSize=640, confThresh=0.85, iouThresh=0.85, maxDet=20):
+		batch, originalShapes = self.BatchFrames(frames, imageSize=imgSize)
+		output = []
+		start = dft()
+		with torch.no_grad():
+			pred = model(batch)[0]
+		print((dft() - start) * 1e3)
+		pred = non_max_suppression(pred, confThresh, iouThresh, max_det=maxDet)
+		for i, det in enumerate(pred):
+			temp = []
+			det[:, :4] = scale_coords(batch[i].shape[1:], det[:, :4], originalShapes[i]).round()
+			for *xyxy, conf, cls in reversed(det):
+				temp.append((xyxy, round(conf.item(), 3), cls))
+			output.append(temp)
+		return output
 
-	def GetOCR(self, img):
-		return self.RunInference(img, self.OCRModel, self.config.OCRSize, self.config.OCRConfThresh, self.config.OCRIOUConfThresh,
-		                         self.config.maxOCR)
+	def GetPlates(self, img, batch=False):
+		method = self.RunInference
+		if batch:
+			method = self.RunBatchInference
+		return method(img,
+		              self.models[self.config.plateModel],
+		              self.config.plateSize,
+		              self.config.plateConfThresh,
+		              self.config.plateIOUConfThresh,
+		              self.config.maxPlates)
+
+	def GetOCR(self, img, batch=False):
+		method = self.RunInference
+		if batch:
+			method = self.RunBatchInference
+		return method(img,
+		              self.OCRModel,
+		              self.config.OCRSize,
+		              self.config.OCRConfThresh,
+		              self.config.OCRIOUConfThresh,
+		              self.config.maxOCR)
 
 	def CropPlate(self, img, box):
 		box = [i.cpu().item() for i in box[0]]
@@ -208,6 +258,14 @@ class Model:
 			for i in boxes:
 				img = self.DrawBox(img, i, thiccness=thiccness, label=label, showConf=showConf, showLabel=showLabel)
 		return img
+
+	def BatchDrawBoxes(self, batch, boxes, thiccness=2, label=None, showConf=False, showLabel=True):
+		if len(boxes) > 0:
+			for i, box in enumerate(boxes):
+				img = batch[i]
+				for j in box:
+					img = self.DrawBox(img, j, thiccness=thiccness, label=label, showConf=showConf, showLabel=showLabel)
+		return batch
 
 	def SortOCR(self, OCRResults, filter=False):
 		results = []
@@ -255,7 +313,8 @@ class Model:
 		if len(plates) == 0:
 			return img, 0, (0, 0), (dft() - start) * 1e3
 		if drawPlates:
-			img = self.DrawBoxes(img, plates, self.config.plateThiccness, None, self.config.plateConf, self.config.plateLabel)
+			img = self.DrawBoxes(img, plates, self.config.plateThiccness, None, self.config.plateConf,
+			                     self.config.plateLabel)
 		croppedPlates = []
 		ocr = []
 		for plate in plates:
@@ -268,8 +327,45 @@ class Model:
 				                     self.config.OCRConf, self.config.OCRLabel)
 		return img, croppedPlates, ocr, (dft() - start) * 1e3
 
+	def ProcessBatch(self, frames, drawPlates=True, drawOCR=True):
+		start = dft()
+		plates = self.GetPlates(frames, True)
+		if len(plates) == 0:
+			return frames, 0, (0, 0), (dft() - start) * 1e3
+		if drawPlates:
+			frames = self.BatchDrawBoxes(frames, plates, self.config.plateThiccness, None, self.config.plateConf,
+			                             self.config.plateLabel)
+		croppedPlates = []
+		ocr = []
+		bindings = []
+		for i, plate in enumerate(plates):
+			for j in plate:
+				bindings.append(-1)
+				bindings[len(croppedPlates)] = (i, j)
+				croppedPlates.append(self.CropPlate(frames[i], j))
+		ocrResults = self.GetOCR(croppedPlates, True)
+		if drawOCR:
+			for i, res in enumerate(ocrResults):
+				frames[bindings[i][0]] = self.DrawBoxes(frames[bindings[i][0]],
+				                                        self.ScaleOCRBoxToImage(res, bindings[i][1]),
+				                                        self.config.OCRThiccness,
+				                                        None,
+				                                        self.config.OCRConf,
+				                                        self.config.OCRLabel)
+		for i, res in enumerate(ocrResults):
+			try:
+				ocr[bindings[i][0]]
+			except IndexError:
+				ocr.append([])
+			ocr[bindings[i][0]].append((self.TranslateOCR(res), sum([item[1] for i, item in enumerate(res) if i <= 9])))
+		return frames, croppedPlates, ocr, (dft() - start) * 1e3
+
 	def Test(self, file):
 		img = cv2.imread(file)
 		img, plates, ocr, time = self.ProcessImage(img)
 		print(ocr, time)
 		dt.imshow(img)
+
+	def Log(self, msg):
+		with open('log.txt', 'a') as f:
+			f.write(str(msg))

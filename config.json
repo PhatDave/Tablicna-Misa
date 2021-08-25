@@ -1,5 +1,5 @@
 {
-    "plateSize": 640,
+    "plateSize": 1920,
     "OCRSize": 320,
     "plateConfThresh": 0.75,
     "plateIOUConfThresh": 0.6,
@@ -13,5 +13,5 @@
     "OCRThiccness": 1,
     "OCRConf": false,
     "OCRLabel": true,
-    "useSmall": false
+    "plateModel": 0
 }
