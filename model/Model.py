@@ -147,25 +147,27 @@ class Model:
 		originalShapes = []
 		for i in frames:
 			originalShapes.append(i.shape)
+		# start = dft()
 
-		batchTensor = None
-		batch = None
+		frames = frames.copy()
 		imgSize = int(imageSize / 32) * 32
 		for i, frame in enumerate(frames):
-			img = letterbox(frame, imgSize, auto=False)[0]
-			img = img.transpose((2, 0, 1))[::-1]
-			img = np.ascontiguousarray(img)
-			img = img[None]
-			img = torch.from_numpy(img)
+			frames[i] = letterbox(frames[i], imgSize, auto=False)[0]
+			frames[i] = frames[i].transpose((2, 0, 1))[::-1]
+			frames[i] = np.ascontiguousarray(frames[i])
 
-			if batchTensor is None:
-				batchTensor = img
-			else:
-				batchTensor = torch.cat((batchTensor, img), axis=0)
+		# 24, h, w, d
+		# 24, d, h, w
+		# 24, w, h, d
+		# frames = np.swapaxes(frames, 1, 2)
+		# 24, d, h, w
+		# frames = np.swapaxes(frames, 1, 3)
 
+		batchTensor = torch.from_numpy(np.asarray(frames))
 		batchTensor = batchTensor.cuda()
 		batchTensor = batchTensor / 255.0
 		batchTensor = batchTensor.half()
+		# print((dft() - start) * 1e3)
 		return batchTensor, originalShapes
 
 	def RunInference(self, img, model, imgSize=640, confThresh=0.85, iouThresh=0.85, maxDet=20):
@@ -183,17 +185,20 @@ class Model:
 	def RunBatchInference(self, frames, model, imgSize=640, confThresh=0.85, iouThresh=0.85, maxDet=20):
 		batch, originalShapes = self.BatchFrames(frames, imageSize=imgSize)
 		output = []
-		start = dft()
+		if len(batch) == 0:
+			return output
 		with torch.no_grad():
 			pred = model(batch)[0]
-		print((dft() - start) * 1e3)
+		batch.cpu()
 		pred = non_max_suppression(pred, confThresh, iouThresh, max_det=maxDet)
+		# pred.cpu()
 		for i, det in enumerate(pred):
 			temp = []
 			det[:, :4] = scale_coords(batch[i].shape[1:], det[:, :4], originalShapes[i]).round()
 			for *xyxy, conf, cls in reversed(det):
 				temp.append((xyxy, round(conf.item(), 3), cls))
 			output.append(temp)
+		del batch, pred
 		return output
 
 	def GetPlates(self, img, batch=False):
@@ -330,7 +335,7 @@ class Model:
 	def ProcessBatch(self, frames, drawPlates=True, drawOCR=True):
 		start = dft()
 		plates = self.GetPlates(frames, True)
-		if len(plates) == 0:
+		if all([len(i) == 0 for i in plates]):
 			return frames, 0, (0, 0), (dft() - start) * 1e3
 		if drawPlates:
 			frames = self.BatchDrawBoxes(frames, plates, self.config.plateThiccness, None, self.config.plateConf,
@@ -344,6 +349,7 @@ class Model:
 				bindings[len(croppedPlates)] = (i, j)
 				croppedPlates.append(self.CropPlate(frames[i], j))
 		ocrResults = self.GetOCR(croppedPlates, True)
+		for i in range(len(plates)): ocr.append([])
 		if drawOCR:
 			for i, res in enumerate(ocrResults):
 				frames[bindings[i][0]] = self.DrawBoxes(frames[bindings[i][0]],
@@ -353,11 +359,8 @@ class Model:
 				                                        self.config.OCRConf,
 				                                        self.config.OCRLabel)
 		for i, res in enumerate(ocrResults):
-			try:
-				ocr[bindings[i][0]]
-			except IndexError:
-				ocr.append([])
-			ocr[bindings[i][0]].append((self.TranslateOCR(res), sum([item[1] for i, item in enumerate(res) if i <= 9])))
+			if len(res) > 0:
+				ocr[bindings[i][0]].append((self.TranslateOCR(res), sum([item[1] for j, item in enumerate(res) if j <= 9])))
 		return frames, croppedPlates, ocr, (dft() - start) * 1e3
 
 	def Test(self, file):

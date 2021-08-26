@@ -1,11 +1,14 @@
 import sys
 import threading
+from time import sleep
 
 import cv2
 from timeit import default_timer as dft
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMainWindow
+
+from FPSTracker import FPSTracker
 from Person import Person
 from Registration import Registration
 from ui.newest import Ui_MainWindow
@@ -32,12 +35,13 @@ class UI:
 		self.nextFrame = None
 		self.liveFeed = False
 		self.liveFeedThread = None
-		self.feedUpdateSem = threading.Semaphore(0)
+		self.FPS = 30
+		self.frameTime = ((1 / self.FPS) * 1e3)
+		self.FPSTracker = FPSTracker()
 
-		self.liveFeedFps = []
-		self.modelProcessingTime = []
-		self.fpsItemLimit = 15
 		self.lastUpdate = dft()
+		self.frameBuffer = []
+		self.frameBufferSem = threading.Semaphore(0)
 
 		self.modelConfig = None
 		self.model = None
@@ -228,9 +232,6 @@ class UI:
 	def DodajUBazuGumb(self):
 		self.database.AddRegistration(self.GetRegistration(self.GetPerson()))
 
-	def GetAverage(self, array):
-		return sum(array) / len(array)
-
 	def LiveFeedGumb(self):
 		self.liveFeed = not self.liveFeed
 		if self.liveFeed:
@@ -242,16 +243,17 @@ class UI:
 	def LiveFeed(self):
 		cv2.namedWindow('Live Feed')
 		while self.liveFeed:
-			self.feedUpdateSem.acquire()
-			self.AddItem((dft() - self.lastUpdate), self.liveFeedFps)
-			if self.nextFrame is None:
-				break
-			cv2.putText(self.nextFrame,
-			            f'{str(round(1 / self.GetAverage(self.liveFeedFps), 1))}FPS {round(self.GetAverage(self.modelProcessingTime), 2)}ms', \
-			            (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 2, cv2.LINE_AA)
-			cv2.imshow('Live Feed', self.nextFrame)
+			self.frameBufferSem.acquire()
+
+			self.FPSTracker.AppendExecTime((dft() - self.lastUpdate) * 1e3)
+			frame = self.frameBuffer.pop(0)
+			# frame = self.FPSTracker.DrawFPS(frame)
+			# frame = self.FPSTracker.DrawExecTime(frame)
+
+			cv2.imshow('Live Feed', frame)
 			self.lastUpdate = dft()
-			if cv2.waitKey(1) == 27:
+			# if cv2.waitKey(1) == 27:
+			if cv2.waitKey(int((1 / self.FPS) * 1e3)) == 27:
 				break
 		cv2.destroyAllWindows()
 		self.liveFeed = False

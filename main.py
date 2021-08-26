@@ -1,24 +1,51 @@
-import os
 import threading
-from timeit import default_timer as dft
-import daveTrash as dt
-import cv2
+import time
+from math import ceil
 
-# import ui.mainUi as ui
-from Person import Person
-from Registration import Registration
+import torch
+from tqdm import tqdm
+
+import ui.mainUi as ui
 from database.mainDatabase import Database
 from input.inputMain import Input
 from model.Model import Model
-from utils.augmentations import letterbox
-from utils.general import non_max_suppression, scale_coords
+
+
+def BechmarkBatchSizes():
+	open('out.txt', 'w')
+	pbar = tqdm(desc='okk')
+	for i in range(10, 70):
+		torch.cuda.empty_cache()
+		size = 64 * i
+		count = 240
+		step = count / 2
+		model.config.plateSize = 64 * i
+		while step > 1:
+			try:
+				inputFile.frameStackSize = int(count)
+				if len(inputFile.frameStack) < inputFile.frameStackSize and inputFile.frameStackFull:
+					inputFile.frameStackFull = False
+					inputFile.frameStackFullSemaphore.release()
+				while not inputFile.frameStackFull: time.sleep(0.1)
+				pbar.desc = f'{inputFile.frameStackSize}, {len(inputFile.frameStack)}, {model.config.plateSize}, {step}'
+				pbar.refresh()
+				frames = inputFile.GetFrames()
+				process = model.ProcessBatch(frames)
+				count += step
+			except (RuntimeError):
+				count -= step
+				step = ceil(step / 2)
+				torch.cuda.empty_cache()
+		with open('out.txt', 'a') as f:
+			f.write(f'{int(count)} images of {model.config.plateSize} size\n')
+	quit()
+
 
 db = Database()
 dbThread = threading.Thread(target=db.Start)
 dbThread.setDaemon(True)
 dbThread.start()
 
-"""
 UI = ui.UI()
 UI.database = db
 UIThread = threading.Thread(target=UI.Start)
@@ -26,10 +53,9 @@ UIThread.setDaemon(True)
 UIThread.start()
 UI.sem.acquire()
 db.UI = UI
-"""
 
 model = Model()
-# UI.LoadConfig(model.config)
+UI.LoadConfig(model.config)
 
 minTimeGap = 2
 lastTime = 0
@@ -37,32 +63,25 @@ currentPlate = ""
 currentConf = 0
 
 inputFile = Input()
-# inputFile.LoadFile('Clip.mp4')
+inputFile.modelConfig = model.config
+inputFile.LoadFile('Clip.mp4')
+inputThread = threading.Thread(target=inputFile.Run)
+inputThread.setDaemon(True)
+inputThread.start()
 # inputFile.LoadFile('test.jpg')
-inputFile.LoadDirectory('test')
+# inputFile.LoadDirectory('test'
 
-# Guranteed shape
-# img = letterbox(inputFile.GetFrame(), 1920, auto=False)[0]
-# TODO:
-# Batch images and pre process to gurantee same shape
-# Figure out what the fuck the model outputs
-# ???
-# Profit
+while True:
+	frames = inputFile.GetFrames()
+	process = model.ProcessBatch(frames)
+	[UI.frameBuffer.append(i) for i in process[0]]
+	print(len(UI.frameBuffer))
+	[UI.frameBufferSem.release() for i in process[0]]
 
-testImage = cv2.imread('goodOne.jpg')
-frames = []
-for i in os.listdir('test'):
-	if '.png' in i or '.jpg' in i:
-		frames.append(cv2.imread(f'test\\{i}'))
+# print(db.GetRegistration('ZG 0000-00'))
+input()
 
-framesP, plates, ocr, time = model.ProcessBatch(frames)
-framesP, plates, ocr, time = model.ProcessBatch(frames)
-print(ocr, time)
-for i, img in enumerate(framesP):
-	cv2.imwrite(f'cunf{i}.jpg', img)
-
-quit()
-
+"""
 while True:
 	frame = inputFile.GetFrame()
 	if frame is None:
@@ -91,3 +110,4 @@ while True:
 
 # print(db.GetRegistration('ZG 0000-00'))
 input()
+"""
