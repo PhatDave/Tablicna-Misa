@@ -75,13 +75,17 @@ def BenchmarkBatchSizes():
 			f.write(f'{int(count)} images of {model.config.plateSize} size\n')
 	quit()
 
+# Enable database to modify plates in UI for querying
 
 while True:
 	frames = inputFile.GetFrames()
 	process = model.ProcessBatch(frames)
 	[UI.frameBuffer.append(i) for i in process[0]]
-	print(len(UI.frameBuffer))
+	[UI.plateStack.append(i) for i in process[2]]
 	[UI.frameBufferSem.release() for i in process[0]]
+	print(len(UI.frameBuffer), len(UI.plateStack))
+	# print(process[2])
+	# print(len(UI.frameBuffer))
 
 # print(db.GetRegistration('ZG 0000-00'))
 input()

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from FPSTracker import FPSTracker
 from Person import Person
 from Registration import Registration
+from ui.PlateManager import PlateManager
 from ui.newest import Ui_MainWindow
 
 
@@ -33,8 +34,9 @@ class UI:
 		self.database = None
 
 		self.nextFrame = None
-		self.liveFeed = False
+		self.liveFeed = True
 		self.liveFeedThread = None
+		self.liveFeedThread = threading.Thread(target=self.LiveFeed)
 		self.FPS = 50
 		self.frameTime = ((1 / self.FPS) * 1e3)
 		self.FPSTracker = FPSTracker()
@@ -42,9 +44,15 @@ class UI:
 		self.lastUpdate = dft()
 		self.frameBuffer = []
 		self.frameBufferSem = threading.Semaphore(0)
+		self.liveFeedThread.start()
 
 		self.modelConfig = None
 		self.model = None
+
+		self.plateStack = []
+		self.plates = []
+		self.platePointer = -1
+		self.plateManager = PlateManager(self)
 
 	def Start(self):
 		self.app = QApplication(sys.argv)
@@ -86,6 +94,9 @@ class UI:
 		self.window.ui.checkBox_z_label.stateChanged.connect(self.OCRLabelDisplay)
 
 		self.window.ui.checkBoxSmallModel.stateChanged.connect(self.SetSmallModel)
+
+		self.window.ui.gumb_lijevi.clicked.connect(self.PreviousPlate)
+		self.window.ui.gumb_desni.clicked.connect(self.NextPlate)
 
 		sys.exit(self.app.exec())
 
@@ -194,6 +205,21 @@ class UI:
 		self.modelConfig.SaveJson()
 		self.window.ui.horizontalSlider_z_iouconfidence.setValue(int(val * 100))
 
+	def PointerChanged(self):
+		self.DisplayRegistration(self.plates[self.platePointer])
+
+	def NextPlate(self):
+		self.platePointer += 1
+		if self.platePointer >= len(self.plates):
+			self.platePointer = 0
+		self.PointerChanged()
+
+	def PreviousPlate(self):
+		self.platePointer -= 1
+		if self.platePointer < 0:
+			self.platePointer = len(self.plates) - 1
+		self.PointerChanged()
+
 	def LoadConfig(self, config):
 		self.modelConfig = config
 
@@ -255,14 +281,13 @@ class UI:
 					# print(f'Decreasing FPS from {self.FPS} to {self.FPS - 10}')
 					self.FPS -= 10
 
-			self.FPSTracker.AppendExecTime((dft() - self.lastUpdate) * 1e3)
+			# self.FPSTracker.AppendExecTime((dft() - self.lastUpdate) * 1e3)
 			frame = self.frameBuffer.pop(0)
-			# frame = self.FPSTracker.DrawFPS(frame)
-			# frame = self.FPSTracker.DrawExecTime(frame)
+			plates = self.plateStack.pop(0)
+			self.plateManager.Manage(plates)
 
 			cv2.imshow('Live Feed', frame)
 			self.lastUpdate = dft()
-			# if cv2.waitKey(1) == 27:
 			if cv2.waitKey(int((1 / self.FPS) * 1e3)) == 27:
 				break
 		cv2.destroyAllWindows()

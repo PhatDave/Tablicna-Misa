@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import cv2
 
+from Registration import Registration
 from utils.augmentations import letterbox
 from utils.general import non_max_suppression, scale_coords
 from utils.plots import plot_one_box, colors
@@ -336,7 +337,9 @@ class Model:
 		start = dft()
 		plates = self.GetPlates(frames, True)
 		if all([len(i) == 0 for i in plates]):
-			return frames, 0, (0, 0), (dft() - start) * 1e3
+			ocr = []
+			[ocr.append([Registration()]) for i in range(len(frames))]
+			return frames, None, ocr, (dft() - start) * 1e3
 		if drawPlates:
 			frames = self.BatchDrawBoxes(frames, plates, self.config.plateThiccness, None, self.config.plateConf,
 			                             self.config.plateLabel)
@@ -360,7 +363,7 @@ class Model:
 				                                        self.config.OCRLabel)
 		for i, res in enumerate(ocrResults):
 			if len(res) > 0:
-				ocr[bindings[i][0]].append((self.TranslateOCR(res), sum([item[1] for j, item in enumerate(res) if j <= 9])))
+				ocr[bindings[i][0]].append(Registration(registration=self.TranslateOCR(res), confidence=sum([item[1] for j, item in enumerate(res) if j <= 9])))
 		return frames, croppedPlates, ocr, (dft() - start) * 1e3
 
 	def Test(self, file):
