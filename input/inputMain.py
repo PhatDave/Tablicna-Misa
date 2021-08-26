@@ -54,7 +54,7 @@ class Input:
 		try: maxSize = self.batchDict[str(int(self.modelConfig.plateSize / 64) * 64)]
 		except KeyError: maxSize = 2
 		# print("Batching", maxSize)
-		if len(self.frameStack) >= int(maxSize * 0.9):
+		if len(self.frameStack) >= int(maxSize * 0.8):
 			self.frameStackFull = True
 			self.frameStackWithdrawSemaphore.release()
 			self.frameStackFullSemaphore.acquire()

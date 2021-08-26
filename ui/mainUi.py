@@ -35,7 +35,7 @@ class UI:
 		self.nextFrame = None
 		self.liveFeed = False
 		self.liveFeedThread = None
-		self.FPS = 30
+		self.FPS = 50
 		self.frameTime = ((1 / self.FPS) * 1e3)
 		self.FPSTracker = FPSTracker()
 
@@ -244,6 +244,16 @@ class UI:
 		cv2.namedWindow('Live Feed')
 		while self.liveFeed:
 			self.frameBufferSem.acquire()
+
+			disparity = int(len(self.frameBuffer) / self.FPS)
+			if disparity > 0:
+				if self.FPS < 200:
+					# print(f'Increasing fps from {self.FPS} to {self.FPS + (disparity * 10)}')
+					self.FPS += disparity * 10
+			if len(self.frameBuffer) < self.FPS:
+				if self.FPS > 30:
+					# print(f'Decreasing FPS from {self.FPS} to {self.FPS - 10}')
+					self.FPS -= 10
 
 			self.FPSTracker.AppendExecTime((dft() - self.lastUpdate) * 1e3)
 			frame = self.frameBuffer.pop(0)

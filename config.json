@@ -1,5 +1,5 @@
 {
-    "plateSize": 1280,
+    "plateSize": 960,
     "OCRSize": 320,
     "plateConfThresh": 0.75,
     "plateIOUConfThresh": 0.6,

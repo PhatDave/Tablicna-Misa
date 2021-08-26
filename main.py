@@ -10,37 +10,6 @@ from database.mainDatabase import Database
 from input.inputMain import Input
 from model.Model import Model
 
-
-def BechmarkBatchSizes():
-	open('out.txt', 'w')
-	pbar = tqdm(desc='okk')
-	for i in range(10, 70):
-		torch.cuda.empty_cache()
-		size = 64 * i
-		count = 240
-		step = count / 2
-		model.config.plateSize = 64 * i
-		while step > 1:
-			try:
-				inputFile.frameStackSize = int(count)
-				if len(inputFile.frameStack) < inputFile.frameStackSize and inputFile.frameStackFull:
-					inputFile.frameStackFull = False
-					inputFile.frameStackFullSemaphore.release()
-				while not inputFile.frameStackFull: time.sleep(0.1)
-				pbar.desc = f'{inputFile.frameStackSize}, {len(inputFile.frameStack)}, {model.config.plateSize}, {step}'
-				pbar.refresh()
-				frames = inputFile.GetFrames()
-				process = model.ProcessBatch(frames)
-				count += step
-			except (RuntimeError):
-				count -= step
-				step = ceil(step / 2)
-				torch.cuda.empty_cache()
-		with open('out.txt', 'a') as f:
-			f.write(f'{int(count)} images of {model.config.plateSize} size\n')
-	quit()
-
-
 db = Database()
 dbThread = threading.Thread(target=db.Start)
 dbThread.setDaemon(True)
@@ -68,8 +37,44 @@ inputFile.LoadFile('Clip.mp4')
 inputThread = threading.Thread(target=inputFile.Run)
 inputThread.setDaemon(True)
 inputThread.start()
+
+
 # inputFile.LoadFile('test.jpg')
 # inputFile.LoadDirectory('test'
+
+
+def BenchmarkBatchSizes():
+	open('out.txt', 'w')
+	pbar = tqdm(desc='okk')
+	for i in range(10, 70):
+		torch.cuda.empty_cache()
+		size = 64 * i
+		count = 240
+		step = count / 2
+		model.config.plateSize = 64 * i
+		while step > 1:
+			try:
+				inputFile.frameStackSize = int(count)
+				if len(inputFile.frameStack) < inputFile.frameStackSize and inputFile.frameStackFull:
+					inputFile.frameStackFull = False
+					inputFile.frameStackFullSemaphore.release()
+				while not inputFile.frameStackFull: time.sleep(0.1)
+				pbar.desc = f'{inputFile.frameStackSize}, {len(inputFile.frameStack)}, {model.config.plateSize}, {step}'
+				pbar.refresh()
+				frames = inputFile.GetFrames()
+				process = model.ProcessBatch(frames)
+				process = model.ProcessBatch(frames)
+				process = model.ProcessBatch(frames)
+				process = model.ProcessBatch(frames)
+				count += step
+			except (RuntimeError):
+				count -= step
+				step = ceil(step / 2)
+				torch.cuda.empty_cache()
+		with open('out.txt', 'a') as f:
+			f.write(f'{int(count)} images of {model.config.plateSize} size\n')
+	quit()
+
 
 while True:
 	frames = inputFile.GetFrames()
