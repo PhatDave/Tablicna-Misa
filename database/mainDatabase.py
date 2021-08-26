@@ -60,16 +60,22 @@ class Database:
 
 	def GetRegistration(self, lookFor):
 		self.readRequests.append(lookFor)
+		# print(len(self.readRequests))
 		self.waitingThread = threading.Thread(target=self.DisplayRegistration, args=(self.readSem, ))
 		self.waitingThread.start()
 		self.sem.release()
-		return Registration(Person())
+		# return Registration(Person())
 
 	def DisplayRegistration(self, sem):
 		sem.acquire()
 		fetch = self.readBuffer.pop(0)
-		if fetch is not None:
-			self.UI.DisplayRegistration(fetch)
+		for i, plate in enumerate(self.UI.plates):
+			if fetch == plate:
+				self.UI.plates[i] = fetch
+				self.UI.PointerChanged()
+				break
+		# if fetch is not None:
+			# self.UI.DisplayRegistration(fetch)
 
 	def AddRegistration(self, reg):
 		self.writeBuffer.append(reg)

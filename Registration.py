@@ -16,5 +16,7 @@ class Registration:
 	def __str__(self):
 		return f'{self.person} {self.registration} {self.model} {self.chassis} {self.insuranceHouse} {self.insuranceNo}'
 
-	def __cmp__(self, other):
-		return levenshtein(self.registration, other.registration) < 4
+	def __eq__(self, other):
+		if other is not None:
+			return levenshtein(self.registration, other.registration) < 4
+		else: return False

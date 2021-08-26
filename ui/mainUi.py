@@ -44,15 +44,18 @@ class UI:
 		self.lastUpdate = dft()
 		self.frameBuffer = []
 		self.frameBufferSem = threading.Semaphore(0)
-		self.liveFeedThread.start()
 
 		self.modelConfig = None
 		self.model = None
 
 		self.plateStack = []
 		self.plates = []
+		self.currentPlate = None
 		self.platePointer = -1
 		self.plateManager = PlateManager(self)
+
+		self.debug = False
+		self.liveFeedThread.start()
 
 	def Start(self):
 		self.app = QApplication(sys.argv)
@@ -206,7 +209,11 @@ class UI:
 		self.window.ui.horizontalSlider_z_iouconfidence.setValue(int(val * 100))
 
 	def PointerChanged(self):
+		if self.currentPlate is None:
+			self.currentPlate = self.plates[0]
+			return
 		self.DisplayRegistration(self.plates[self.platePointer])
+		# print([str(i) for i in self.plates])
 
 	def NextPlate(self):
 		self.platePointer += 1
@@ -256,6 +263,7 @@ class UI:
 			array.pop(0)
 
 	def DodajUBazuGumb(self):
+		self.plates[self.platePointer] = self.GetRegistration(self.GetPerson())
 		self.database.AddRegistration(self.GetRegistration(self.GetPerson()))
 
 	def LiveFeedGumb(self):
@@ -267,7 +275,8 @@ class UI:
 			del self.liveFeedThread
 
 	def LiveFeed(self):
-		cv2.namedWindow('Live Feed')
+		if not self.debug:
+			cv2.namedWindow('Live Feed')
 		while self.liveFeed:
 			self.frameBufferSem.acquire()
 
@@ -286,11 +295,13 @@ class UI:
 			plates = self.plateStack.pop(0)
 			self.plateManager.Manage(plates)
 
-			cv2.imshow('Live Feed', frame)
+			if not self.debug:
+				cv2.imshow('Live Feed', frame)
 			self.lastUpdate = dft()
 			if cv2.waitKey(int((1 / self.FPS) * 1e3)) == 27:
 				break
-		cv2.destroyAllWindows()
+		if not self.debug:
+			cv2.destroyAllWindows()
 		self.liveFeed = False
 
 	def DisplayPerson(self, person):
