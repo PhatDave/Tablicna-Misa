@@ -278,21 +278,23 @@ class UI:
 		if not self.debug:
 			cv2.namedWindow('Live Feed')
 		while self.liveFeed:
+			if len(self.frameBuffer) == 0:
+				print("Buffer empty!")
 			self.frameBufferSem.acquire()
 
 			# disparity = int((len(self.frameBuffer) / 1) / (self.FPS / 2))
 			# if disparity > 0:
-			if len(self.frameBuffer) > 10:
+			if len(self.frameBuffer) > 15:
 				# if self.FPS < 200:
 					# print(f'Increasing fps from {self.FPS} to {self.FPS + (disparity * 10)}')
 				# self.FPS += disparity * 20
 				self.FPS += 60
 				if self.FPS > 600:
 					self.FPS = 600
-			if len(self.frameBuffer) < 10:
+			if len(self.frameBuffer) < 15:
 				self.FPS -= 60
-				if self.FPS < 30:
-					self.FPS = 30
+				if self.FPS < 15:
+					self.FPS = 15
 
 			# self.FPSTracker.AppendExecTime((dft() - self.lastUpdate) * 1e3)
 			frame = self.frameBuffer.pop(0)
