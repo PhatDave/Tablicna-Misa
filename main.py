@@ -2,6 +2,9 @@ import threading
 import time
 from math import ceil
 
+import tensorflow
+import daveTrash as dt
+import cv2
 import torch
 from tqdm import tqdm
 
@@ -34,14 +37,15 @@ currentConf = 0
 
 inputFile = Input()
 inputFile.modelConfig = model.config
-inputFile.LoadFile('Clip.mp4')
+# inputFile.LoadFile('Clip.mp4')
+inputFile.cap = dt.GetCamera()
+# print(inputFile.cap)
 inputThread = threading.Thread(target=inputFile.Run)
 inputThread.setDaemon(True)
 inputThread.start()
 
-
 # inputFile.LoadFile('test.jpg')
-# inputFile.LoadDirectory('test'
+# inputFile.LoadDirectory('test')
 
 
 def BenchmarkBatchSizes():
@@ -83,7 +87,7 @@ while True:
 	[UI.frameBuffer.append(i) for i in process[0]]
 	[UI.plateStack.append(i) for i in process[2]]
 	[UI.frameBufferSem.release() for i in process[0]]
-	# print(len(UI.frameBuffer), len(UI.plateStack))
+	print(len(UI.frameBuffer), len(UI.plateStack))
 # print(process[2])
 # print(len(UI.frameBuffer))
 

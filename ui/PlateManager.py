@@ -6,12 +6,13 @@ class PlateManager:
 	def __init__(self, UI):
 		self.ui = UI
 		self.database = None
+		self.confThreshold = 5
 
 	def Manage(self, plates):
 		try: self.ui.plates[self.ui.platePointer].displayTime = dft()
 		except IndexError: pass
 		for plate in plates:
-			if plate.confidence < 4:
+			if plate.confidence < self.confThreshold:
 				continue
 			displayID = self.IsPlateDisplayed(plate)
 			if displayID is False:
