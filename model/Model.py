@@ -9,7 +9,7 @@ import cv2
 from Registration import Registration
 from utils.augmentations import letterbox
 from utils.general import non_max_suppression, scale_coords
-from utils.plots import plot_one_box, colors
+from utils.plots import Annotator, colors
 
 
 class ModelConfig:
@@ -113,6 +113,8 @@ class Model:
 		self.models = [self.plateModel, self.smallModel]
 		self.OCRModel = self.LoadModelPath('OCR.pt')
 		self.config = ModelConfig()
+		self.prevModel = self.models[0]
+		self.models[1].cpu()
 
 		open('log.txt', 'w')
 
@@ -202,12 +204,20 @@ class Model:
 		del batch, pred
 		return output
 
+	def GetCurrentModel(self):
+		if self.models[self.config.plateModel] is not self.prevModel:
+			self.prevModel.cpu()
+			self.models[self.config.plateModel].cuda()
+			self.prevModel = self.models[self.config.plateModel]
+		return self.prevModel
+
 	def GetPlates(self, img, batch=False):
 		method = self.RunInference
 		if batch:
 			method = self.RunBatchInference
 		return method(img,
-		              self.models[self.config.plateModel],
+		              # self.models[self.config.plateModel],
+		              self.GetCurrentModel(),
 		              self.config.plateSize,
 		              self.config.plateConfThresh,
 		              self.config.plateIOUConfThresh,
@@ -257,8 +267,12 @@ class Model:
 				label += ' ' + str(round(box[1], 2))
 		if label is None:
 			label = ""
-		return plot_one_box(box[0], img, label=label, color=colors(0, True), line_width=thiccness)
+		annotator = Annotator(img, line_width=thiccness, pil=False)
+		annotator.box_label(box[0], label, color=(0, 0, 255))
+		# return plot_one_box(box[0], img, label=label, color=colors(0, True), line_width=thiccness)
+		return annotator.result()
 
+	# Deprecated
 	def DrawBoxes(self, img, boxes, thiccness=2, label=None, showConf=False, showLabel=True):
 		if len(boxes) > 0:
 			for i in boxes:
@@ -313,6 +327,7 @@ class Model:
 			output += self.OCRLabels[int(i[2].item())]
 		return output
 
+	# Deprecated
 	def ProcessImage(self, img, drawPlates=True, drawOCR=True):
 		start = dft()
 		plates = self.GetPlates(img)

@@ -54,6 +54,8 @@ class UI:
 		self.platePointer = -1
 		self.plateManager = PlateManager(self)
 
+		self.filePlayback = True
+
 		self.debug = False
 		self.liveFeedThread.start()
 
@@ -282,21 +284,28 @@ class UI:
 				print("Buffer empty!")
 			self.frameBufferSem.acquire()
 
-			# disparity = int((len(self.frameBuffer) / 1) / (self.FPS / 2))
-			# if disparity > 0:
-			if len(self.frameBuffer) > 15:
-				# if self.FPS < 200:
-					# print(f'Increasing fps from {self.FPS} to {self.FPS + (disparity * 10)}')
-				# self.FPS += disparity * 20
-				self.FPS += 60
-				if self.FPS > 600:
-					self.FPS = 600
-			if len(self.frameBuffer) < 15:
-				self.FPS -= 60
-				if self.FPS < 15:
-					self.FPS = 15
+			if self.filePlayback:
+				disparity = int(len(self.frameBuffer) / self.FPS)
+				if disparity > 0:
+					if self.FPS < 200:
+						# print(f'Increasing fps from {self.FPS} to {self.FPS + (disparity * 10)}')
+						self.FPS += disparity * 10
+				if len(self.frameBuffer) < self.FPS:
+					if self.FPS > 30:
+						# print(f'Decreasing FPS from {self.FPS} to {self.FPS - 10}')
+						self.FPS -= 10
+			else:
+				if len(self.frameBuffer) > (self.FPS / 6):
+					self.FPS += 40
+					if self.FPS > 600:
+						self.FPS = 600
+				elif len(self.frameBuffer) < (self.FPS / 6):
+					self.FPS -= 60
+					if self.FPS < 15:
+						self.FPS = 15
 
 			# self.FPSTracker.AppendExecTime((dft() - self.lastUpdate) * 1e3)
+			# print(self.FPS)
 			frame = self.frameBuffer.pop(0)
 			plates = self.plateStack.pop(0)
 			self.plateManager.Manage(plates)
