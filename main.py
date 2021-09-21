@@ -1,11 +1,11 @@
 import threading
-from timeit import default_timer as dft
-import daveTrash as dt
-import cv2
+import time
+from math import ceil
+
+import torch
+from tqdm import tqdm
 
 import ui.mainUi as ui
-from Person import Person
-from Registration import Registration
 from database.mainDatabase import Database
 from input.inputMain import Input
 from model.Model import Model
@@ -17,6 +17,7 @@ dbThread.start()
 
 UI = ui.UI()
 UI.database = db
+UI.plateManager.database = db
 UIThread = threading.Thread(target=UI.Start)
 UIThread.setDaemon(True)
 UIThread.start()
@@ -25,10 +26,6 @@ db.UI = UI
 
 model = Model()
 UI.LoadConfig(model.config)
-UI.model = model
-# 72 - yolo3tiny model
-# 80 - tiny model - 100 epoch, pretty good
-# model.plateModel = model.LoadModel(80)
 
 minTimeGap = 2
 lastTime = 0
@@ -36,9 +33,64 @@ currentPlate = ""
 currentConf = 0
 
 inputFile = Input()
-# inputFile.LoadFile('Clip.mp4')
+inputFile.modelConfig = model.config
+inputFile.LoadFile('Clip.mp4')
+inputThread = threading.Thread(target=inputFile.Run)
+inputThread.setDaemon(True)
+inputThread.start()
+
+
 # inputFile.LoadFile('test.jpg')
-inputFile.LoadDirectory('test')
+# inputFile.LoadDirectory('test'
+
+
+def BenchmarkBatchSizes():
+	open('out.txt', 'w')
+	pbar = tqdm(desc='okk')
+	for i in range(10, 70):
+		torch.cuda.empty_cache()
+		size = 64 * i
+		count = 240
+		step = count / 2
+		model.config.plateSize = 64 * i
+		while step > 1:
+			try:
+				inputFile.frameStackSize = int(count)
+				if len(inputFile.frameStack) < inputFile.frameStackSize and inputFile.frameStackFull:
+					inputFile.frameStackFull = False
+					inputFile.frameStackFullSemaphore.release()
+				while not inputFile.frameStackFull: time.sleep(0.1)
+				pbar.desc = f'{inputFile.frameStackSize}, {len(inputFile.frameStack)}, {model.config.plateSize}, {step}'
+				pbar.refresh()
+				frames = inputFile.GetFrames()
+				process = model.ProcessBatch(frames)
+				process = model.ProcessBatch(frames)
+				process = model.ProcessBatch(frames)
+				process = model.ProcessBatch(frames)
+				count += step
+			except (RuntimeError):
+				count -= step
+				step = ceil(step / 2)
+				torch.cuda.empty_cache()
+		with open('out.txt', 'a') as f:
+			f.write(f'{int(count)} images of {model.config.plateSize} size\n')
+	quit()
+
+
+while True:
+	frames = inputFile.GetFrames()
+	process = model.ProcessBatch(frames)
+	[UI.frameBuffer.append(i) for i in process[0]]
+	[UI.plateStack.append(i) for i in process[2]]
+	[UI.frameBufferSem.release() for i in process[0]]
+	# print(len(UI.frameBuffer), len(UI.plateStack))
+# print(process[2])
+# print(len(UI.frameBuffer))
+
+# print(db.GetRegistration('ZG 0000-00'))
+input()
+
+"""
 while True:
 	frame = inputFile.GetFrame()
 	if frame is None:
@@ -67,3 +119,4 @@ while True:
 
 # print(db.GetRegistration('ZG 0000-00'))
 input()
+"""

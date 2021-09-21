@@ -1,13 +1,17 @@
 import sys
 import threading
+from time import sleep
 
 import cv2
 from timeit import default_timer as dft
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QMainWindow
+
+from FPSTracker import FPSTracker
 from Person import Person
 from Registration import Registration
+from ui.PlateManager import PlateManager
 from ui.newest import Ui_MainWindow
 
 
@@ -30,17 +34,28 @@ class UI:
 		self.database = None
 
 		self.nextFrame = None
-		self.liveFeed = False
+		self.liveFeed = True
 		self.liveFeedThread = None
-		self.feedUpdateSem = threading.Semaphore(0)
+		self.liveFeedThread = threading.Thread(target=self.LiveFeed)
+		self.FPS = 50
+		self.frameTime = ((1 / self.FPS) * 1e3)
+		self.FPSTracker = FPSTracker()
 
-		self.liveFeedFps = []
-		self.modelProcessingTime = []
-		self.fpsItemLimit = 15
 		self.lastUpdate = dft()
+		self.frameBuffer = []
+		self.frameBufferSem = threading.Semaphore(0)
 
 		self.modelConfig = None
 		self.model = None
+
+		self.plateStack = []
+		self.plates = []
+		self.currentPlate = None
+		self.platePointer = -1
+		self.plateManager = PlateManager(self)
+
+		self.debug = False
+		self.liveFeedThread.start()
 
 	def Start(self):
 		self.app = QApplication(sys.argv)
@@ -83,10 +98,13 @@ class UI:
 
 		self.window.ui.checkBoxSmallModel.stateChanged.connect(self.SetSmallModel)
 
+		self.window.ui.gumb_lijevi.clicked.connect(self.PreviousPlate)
+		self.window.ui.gumb_desni.clicked.connect(self.NextPlate)
+
 		sys.exit(self.app.exec())
 
 	def SetSmallModel(self):
-		self.model.SwitchModel(self.window.ui.checkBoxSmallModel.isChecked())
+		self.modelConfig.plateModel = int(self.window.ui.checkBoxSmallModel.isChecked())
 
 	def PlateConfidenceDisplay(self):
 		self.modelConfig.plateConf = self.window.ui.checkBox_t_confidence.isChecked()
@@ -190,6 +208,25 @@ class UI:
 		self.modelConfig.SaveJson()
 		self.window.ui.horizontalSlider_z_iouconfidence.setValue(int(val * 100))
 
+	def PointerChanged(self):
+		if self.currentPlate is None:
+			self.currentPlate = self.plates[0]
+			return
+		self.DisplayRegistration(self.plates[self.platePointer])
+		# print([str(i) for i in self.plates])
+
+	def NextPlate(self):
+		self.platePointer += 1
+		if self.platePointer >= len(self.plates):
+			self.platePointer = 0
+		self.PointerChanged()
+
+	def PreviousPlate(self):
+		self.platePointer -= 1
+		if self.platePointer < 0:
+			self.platePointer = len(self.plates) - 1
+		self.PointerChanged()
+
 	def LoadConfig(self, config):
 		self.modelConfig = config
 
@@ -226,10 +263,8 @@ class UI:
 			array.pop(0)
 
 	def DodajUBazuGumb(self):
+		self.plates[self.platePointer] = self.GetRegistration(self.GetPerson())
 		self.database.AddRegistration(self.GetRegistration(self.GetPerson()))
-
-	def GetAverage(self, array):
-		return sum(array) / len(array)
 
 	def LiveFeedGumb(self):
 		self.liveFeed = not self.liveFeed
@@ -240,20 +275,33 @@ class UI:
 			del self.liveFeedThread
 
 	def LiveFeed(self):
-		cv2.namedWindow('Live Feed')
+		if not self.debug:
+			cv2.namedWindow('Live Feed')
 		while self.liveFeed:
-			self.feedUpdateSem.acquire()
-			self.AddItem((dft() - self.lastUpdate), self.liveFeedFps)
-			if self.nextFrame is None:
-				break
-			cv2.putText(self.nextFrame,
-			            f'{str(round(1 / self.GetAverage(self.liveFeedFps), 1))}FPS {round(self.GetAverage(self.modelProcessingTime), 2)}ms', \
-			            (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 2, cv2.LINE_AA)
-			cv2.imshow('Live Feed', self.nextFrame)
+			self.frameBufferSem.acquire()
+
+			disparity = int(len(self.frameBuffer) / self.FPS)
+			if disparity > 0:
+				if self.FPS < 200:
+					# print(f'Increasing fps from {self.FPS} to {self.FPS + (disparity * 10)}')
+					self.FPS += disparity * 10
+			if len(self.frameBuffer) < self.FPS:
+				if self.FPS > 30:
+					# print(f'Decreasing FPS from {self.FPS} to {self.FPS - 10}')
+					self.FPS -= 10
+
+			# self.FPSTracker.AppendExecTime((dft() - self.lastUpdate) * 1e3)
+			frame = self.frameBuffer.pop(0)
+			plates = self.plateStack.pop(0)
+			self.plateManager.Manage(plates)
+
+			if not self.debug:
+				cv2.imshow('Live Feed', frame)
 			self.lastUpdate = dft()
-			if cv2.waitKey(1) == 27:
+			if cv2.waitKey(int((1 / self.FPS) * 1e3)) == 27:
 				break
-		cv2.destroyAllWindows()
+		if not self.debug:
+			cv2.destroyAllWindows()
 		self.liveFeed = False
 
 	def DisplayPerson(self, person):
